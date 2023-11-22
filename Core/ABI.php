@@ -128,21 +128,22 @@ class ABI
     private static function ExistsDynamicParameter(array $components): bool
     {
         foreach ($components as $comp) {
+
             if (is_string($comp)) {
+                if (preg_match_all('/\[(.*?)\]/', $comp)) return true; // string[] is dynamic
                 $isStatic = self::IsStaticParameter(self::GetParameterType($comp));
             } else {
                 if (isset($comp->components)) {
                     $isStatic = !self::ExistsDynamicParameter($comp->components);
                 } else {
+                    if (preg_match_all('/\[(.*?)\]/', $comp->type)) return true; // string[] is dynamic
                     $isStatic = self::IsStaticParameter(self::GetParameterType($comp->type));
                 }
             }
-
             if (!$isStatic) {
                 return true;
             }
         }
-
         return false;
     }
 
@@ -345,6 +346,30 @@ class ABI
         return '0x' . $hashData;
     }
 
+    /**
+     * this covers this case:  struct { string, uint256[] };
+     * //https://github.com/ethers-io/ethers.js/issues/718#issuecomment-1146933949
+     * //{"type": "tuple","components": [{"type" : "uint256[]"}]}
+     *
+     */
+
+    public static function EncodeTuple(object $input_data, $data): string
+    {
+        $hashData = "";
+        $currentDynamicIndex = self::NUM_ZEROS / 2;
+
+        $input = new stdClass();
+        $input->type = $input_data->type;
+        $input->components = $input_data->components;
+
+        $hashData .= self::EncodeInput($input, $data, 1, $currentDynamicIndex);
+
+        if (isset($input->hash)) $currentDynamicIndex += strlen($input->hash) / 2;
+
+        $hashData .= self::EncodeInput($input, null, 2, $currentDynamicIndex);
+
+        return '0x' . $hashData;
+    }
 
 
 
