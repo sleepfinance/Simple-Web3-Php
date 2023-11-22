@@ -283,4 +283,15 @@ class ABITest extends TestCase
         $expected = ABI::DecodeGroup(json_decode(json_encode($components)), $bytes, 0);
         $this->assertSame($expected, $result);
     }
+
+    /**
+     * @covers ::DecodeGroup
+     * https://github.com/ethers-io/ethers.js/issues/718#issuecomment-1146933949
+     */
+    #[DataProviderExternal(TupleFixture::class, 'validEncoderNestedArrayData')]
+    public function testCanEncodeNestedArrayInTuple($tuple, $values, $bytes, $result)
+    {
+        $expected = ABI::EncodeTuple($tuple, $values);
+        $this->assertSame($expected, $result);
+    }
 }
