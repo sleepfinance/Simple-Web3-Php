@@ -269,8 +269,9 @@ class ABI
         $currentDynamicIndex = 0; {
             $staticInputCount = 0;
             foreach ($inputs as $input) {
-                $varType = self::GetParameterType($input->type);
-
+                $varType = is_string($input)
+                    ? self::GetParameterType($input)
+                    : self::GetParameterType($input->type);
                 // for non-tuple item, we'll have in-place value or offset
                 if ($varType != VariableType::Tuple) {
                     $staticInputCount++;
@@ -376,6 +377,7 @@ class ABI
     private static function EncodeInput_Array($full_input, $inputData)
     {
         $inputs = [];
+
         $currentDynamicIndex = count($inputData) * self::NUM_ZEROS / 2;
         //prepare clean input
         $last_array_marker     = strrpos($full_input->type, '[');
@@ -418,12 +420,12 @@ class ABI
             $input_type = is_string($input) ? $input : $input->type;
             $varType = self::GetParameterType($input_type);
             //dynamic
-            if (Utils::string_contains($input->type, '[]')) {
+            if (Utils::string_contains($input_type, '[]')) {
                 $input->hash =  self::EncodeInput_Array($input, $inputData);
                 $res = self::EncodeInput_UInt($currentDynamicIndex);
                 return $res;
-            } else if (preg_match_all('/\[(\d+)\]/', $input->type, $matches)) {
-                $typeStr = str_replace($matches[0], "", $input->type);
+            } else if (preg_match_all('/\[(\d+)\]/', $input_type, $matches)) {
+                $typeStr = str_replace($matches[0], "", $input_type);
                 $inferredType = [];
                 for ($i = 0; $i < (int)$matches[1][0]; $i++) {
                     $inferredInput = new stdClass();
@@ -475,6 +477,7 @@ class ABI
 
     private static function EncodeInput_UInt($data)
     {
+
         if (is_string($data) && ctype_digit($data)) {
             $bn = Utils::toBn($data);
             $hash = self::AddZeros($bn->toHex(true), true);
